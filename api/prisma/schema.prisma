@@ -6,16 +6,18 @@
 
 generator client {
   provider = "prisma-client-js"
-  // output   = "../generated/prisma"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
 }
+
 enum Role {
   USER
   ADMIN
 }
+
 enum OrderStatus {
   PENDING
   PROCESSING
@@ -23,41 +25,42 @@ enum OrderStatus {
   COMPLETED
   CANCELLED
 }
-model User {
-  id        String   @id @default(uuid())
-  firstName      String?
-  lastName       String?
-  email     String   @unique
-  password  String
-  role      Role     @default(USER)
-  refreshToken String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  orders    Order[]
-  carts     Cart[]
-  products  Product[]
-  payments  Payment[]
+model User {
+  id           String   @id @default(uuid())
+  firstName    String?
+  lastName     String?
+  email        String   @unique
+  password     String
+  role         Role     @default(USER)
+  refreshToken String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders   Order[]
+  carts    Cart[]
+  products Product[]
+  payments Payment[]
 }
 
 model Order {
-  id        String   @id @default(uuid())
-  orderNumber String   @unique @default(cuid())
-  status    OrderStatus @default(PENDING)
+  id          String      @id @default(uuid())
+  orderNumber String      @unique @default(cuid())
+  status      OrderStatus @default(PENDING)
   totalAmount Float
-  userId    String
-  total     Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  userId      String
+  total       Float
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id],  onDelete: Cascade)
-  cartId    String
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
 
   shippingAddress String?
-  
-  orderItems   OrderItem[]
-  payment      Payment?
+
+  orderItems OrderItem[]
+  payment    Payment?
 }
 
 model Cart {
@@ -68,23 +71,23 @@ model Cart {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  orders    Order[]
+  orders Order[]
 }
 
 model Payment {
-  id        String   @id @default(uuid())
-  userId    String
-  
+  id     String @id @default(uuid())
+  userId String
+
   amount    Float
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  orderId   String @unique
-  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model Product {
@@ -93,18 +96,16 @@ model Product {
   name        String
   description String?
   price       Float
-  stock       Int @default(0)
-  sku         String @unique
+  stock       Int      @default(0)
+  sku         String   @unique
   imageUrl    String?
-  isActive    Boolean @default(true)
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  OrderItems   OrderItem[]
-  cartItems    CartItem[]
-
-
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  OrderItems OrderItem[]
+  cartItems  CartItem[]
 
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -116,7 +117,7 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  products  Product[]
+  products Product[]
 }
 
 model OrderItem {
@@ -128,9 +129,9 @@ model OrderItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   orderid String
-  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 model CartItem {
@@ -141,5 +142,5 @@ model CartItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }

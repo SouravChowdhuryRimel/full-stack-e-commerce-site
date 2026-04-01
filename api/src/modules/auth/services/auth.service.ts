@@ -1,12 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from '../dto/register.dto';
 import { AuthResponseDto } from '../dto/auth-response.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { randomBytes } from 'crypto';
 
 @Injectable()
 export class AuthService {
+    refresh(id: any): AuthResponseDto | PromiseLike<AuthResponseDto> {
+        throw new Error('Method not implemented.');
+    }
     private readonly SALT_ROUNDS = 10;
 
     constructor(private prisma: PrismaService, private jwtService: JwtService) { }
@@ -43,23 +47,57 @@ export class AuthService {
 
             const tokens = await this.generateTokens(user.id, user.email);
 
+            await this.updateRefreshToken(user.id, tokens.refreshToken);
+
             return {
                 user,
                 ...tokens,
             };
 
         } catch (error) {
-
+            console.log(error);
+            throw new InternalServerErrorException('Failed to register user');
         }
     }
 
     private async generateTokens(userId: string, email: string): Promise<{ accessToken: string; refreshToken: string }> {
-        const accessToken = this.jwtService.sign({ id: userId, email }, {
-            expiresIn: '15m',
-        });
-        const refreshToken = this.jwtService.sign({ id: userId, email }, {
-            expiresIn: '7d',
-        });
+        const payload = { sub: userId, email };
+        const refreshId = randomBytes(16).toString('hex');
+        const [accessToken, refreshToken] = await Promise.all([
+            this.jwtService.signAsync(payload, {
+                expiresIn: '15m',
+            }),
+            this.jwtService.signAsync({ ...payload, refreshId }, {
+                expiresIn: '7d',
+            }),
+        ]);
         return { accessToken, refreshToken };
+    }
+
+    async updateRefreshToken(userId: string, refreshToken: string) {
+        const hashedRefreshToken = await bcrypt.hash(refreshToken, this.SALT_ROUNDS);
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { refreshToken: hashedRefreshToken },
+        });
+    }
+
+    async refreshTokens(userId: string): Promise<AuthResponseDto> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user || !user.refreshToken) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        const tokens = await this.generateTokens(user.id, user.email);
+
+        await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+        return {
+            user,
+            ...tokens,
+        };
     }
 }

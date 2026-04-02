@@ -1,12 +1,14 @@
-import { IsObject, IsString } from "class-validator";
+import { IsObject, IsOptional, IsString } from "class-validator";
 import { Role } from "generated/prisma";
 
 export class AuthResponseDto {
     @IsString()
-    accessToken: string;
+    @IsOptional()
+    accessToken?: string;
 
     @IsString()
-    refreshToken: string;
+    @IsOptional()
+    refreshToken?: string;
 
     user: {
         id: string;

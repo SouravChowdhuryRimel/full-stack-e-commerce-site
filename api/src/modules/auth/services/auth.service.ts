@@ -1,10 +1,11 @@
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from '../dto/register.dto';
 import { AuthResponseDto } from '../dto/auth-response.dto';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'crypto';
+import { LoginDto } from '../dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -24,7 +25,7 @@ export class AuthService {
         });
 
         if (exitingUser) {
-            throw new Error('User already exists');
+            throw new ConflictException('User already exists');
         }
 
         try {
@@ -45,13 +46,8 @@ export class AuthService {
                 },
             });
 
-            const tokens = await this.generateTokens(user.id, user.email);
-
-            await this.updateRefreshToken(user.id, tokens.refreshToken);
-
             return {
                 user,
-                ...tokens,
             };
 
         } catch (error) {
@@ -97,6 +93,46 @@ export class AuthService {
 
         return {
             user,
+            ...tokens,
+        };
+    }
+
+    async logout(userId: string) {
+        await this.prisma.user.update({
+            where: { id: userId },
+            data: { refreshToken: null },
+        })
+    }
+
+    async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+        const { email, password } = loginDto;
+
+        const user = await this.prisma.user.findUnique({
+            where: { email },
+        });
+
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordValid) {
+            throw new UnauthorizedException('Invalid password');
+        }
+
+        const tokens = await this.generateTokens(user.id, user.email);
+
+        await this.updateRefreshToken(user.id, tokens.refreshToken);
+
+        return {
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role,
+            },
             ...tokens,
         };
     }
